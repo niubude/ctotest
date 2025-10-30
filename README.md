@@ -1,297 +1,300 @@
-# SVN Code Review System - Database Schema
+# SVN Code Review Tool
 
-This project uses Prisma with SQLite to manage data persistence for an SVN repository code review system powered by AI.
+An AI-powered code review tool for SVN repositories built with Next.js, shadcn UI, Prisma, and SQLite.
 
-## Overview
+## Tech Stack
 
-The database schema models SVN repositories, review rules, system prompts for AI, review sessions, and findings from code reviews. This enables comprehensive tracking of automated code reviews and their results.
+- **Framework**: Next.js 16 (App Router)
+- **Language**: TypeScript
+- **Styling**: Tailwind CSS 4
+- **UI Components**: shadcn/ui
+- **Database**: SQLite with Prisma ORM
+- **Package Manager**: npm
 
-## Database Schema
+## Prerequisites
 
-### Entity Relationship Diagram
+- Node.js 18+ installed
+- npm, yarn, or pnpm package manager
 
+## Getting Started
+
+### 1. Clone the repository
+
+```bash
+git clone <repository-url>
+cd <project-directory>
 ```
-SvnRepository (1) ──────< (N) ReviewSession
-ReviewRule (1) ──────< (N) ReviewSession  
-SystemPrompt (1) ──────< (N) ReviewSession
-ReviewSession (1) ──────< (N) ReviewFinding
-```
 
-## Models
+### 2. Install dependencies
 
-### SvnRepository
-
-Represents an SVN repository configuration including connection details and authentication.
-
-**Fields:**
-- `id` (String, Primary Key): Unique identifier (CUID)
-- `name` (String, Unique): Repository name for identification
-- `url` (String): SVN repository URL
-- `username` (String?, Optional): SVN authentication username
-- `password` (String?, Optional): SVN authentication password (should be encrypted in production)
-- `description` (String?, Optional): Repository description
-- `isActive` (Boolean): Whether the repository is active for reviews (default: true)
-- `createdAt` (DateTime): Record creation timestamp
-- `updatedAt` (DateTime): Last update timestamp
-
-**Relationships:**
-- One-to-many with `ReviewSession` (cascade delete)
-
-**Indexes:**
-- `name` (unique constraint + index for fast lookups)
-- `isActive` (for filtering active repositories)
-
----
-
-### ReviewRule
-
-Defines review rules and criteria for code analysis. Rules can be customized per repository or applied globally.
-
-**Fields:**
-- `id` (String, Primary Key): Unique identifier (CUID)
-- `name` (String, Unique): Rule name
-- `description` (String?, Optional): Detailed rule description
-- `ruleType` (String): Type of rule (e.g., "security", "performance", "style", "best-practice")
-- `severity` (String): Default severity level - "low", "medium" (default), "high", "critical"
-- `isEnabled` (Boolean): Whether the rule is active (default: true)
-- `configuration` (String?, Optional): JSON string for rule-specific configuration
-- `createdAt` (DateTime): Record creation timestamp
-- `updatedAt` (DateTime): Last update timestamp
-
-**Relationships:**
-- One-to-many with `ReviewSession` (set null on delete)
-
-**Indexes:**
-- `name` (unique constraint + index)
-- `ruleType` (for filtering by rule category)
-- `isEnabled` (for filtering active rules)
-
----
-
-### SystemPrompt
-
-Contains system prompts and templates for AI-powered code reviews. Different prompts can be used for different review focuses.
-
-**Fields:**
-- `id` (String, Primary Key): Unique identifier (CUID)
-- `name` (String, Unique): Prompt name
-- `promptText` (String): The actual prompt template/text sent to the AI
-- `description` (String?, Optional): Description of the prompt's purpose
-- `category` (String): Prompt category - "general" (default), "security", "performance", etc.
-- `isActive` (Boolean): Whether the prompt is available for use (default: true)
-- `version` (Int): Prompt version number (default: 1)
-- `createdAt` (DateTime): Record creation timestamp
-- `updatedAt` (DateTime): Last update timestamp
-
-**Relationships:**
-- One-to-many with `ReviewSession` (set null on delete)
-
-**Indexes:**
-- `name` (unique constraint + index)
-- `category` (for filtering by prompt type)
-- `isActive` (for filtering active prompts)
-
----
-
-### ReviewSession
-
-Represents a single code review session for a repository. Captures the review execution and metadata.
-
-**Fields:**
-- `id` (String, Primary Key): Unique identifier (CUID)
-- `repositoryId` (String, Foreign Key): Reference to SvnRepository
-- `ruleId` (String?, Optional, Foreign Key): Reference to ReviewRule used
-- `promptId` (String?, Optional, Foreign Key): Reference to SystemPrompt used
-- `svnRevision` (String?, Optional): SVN revision number reviewed
-- `status` (String): Session status - "pending" (default), "in-progress", "completed", "failed"
-- `startedAt` (DateTime): When the review started (default: now)
-- `completedAt` (DateTime?, Optional): When the review completed
-- `aiModel` (String?, Optional): AI model used (e.g., "gpt-4", "claude-3")
-- `totalFiles` (Int): Total number of files reviewed (default: 0)
-- `totalFindings` (Int): Total number of findings generated (default: 0)
-- `metadata` (String?, Optional): JSON string for additional session data
-- `createdAt` (DateTime): Record creation timestamp
-- `updatedAt` (DateTime): Last update timestamp
-
-**Relationships:**
-- Many-to-one with `SvnRepository` (cascade delete - deletes all sessions if repo is deleted)
-- Many-to-one with `ReviewRule` (set null on delete)
-- Many-to-one with `SystemPrompt` (set null on delete)
-- One-to-many with `ReviewFinding` (cascade delete)
-
-**Indexes:**
-- `repositoryId` (for efficient repository-based queries)
-- `status` (for filtering by session status)
-- `startedAt` (for chronological ordering)
-
----
-
-### ReviewFinding
-
-Individual findings, issues, or observations from a review session. Each finding represents a specific code issue or suggestion.
-
-**Fields:**
-- `id` (String, Primary Key): Unique identifier (CUID)
-- `sessionId` (String, Foreign Key): Reference to ReviewSession
-- `filePath` (String): Path to the file containing the finding
-- `lineNumber` (Int?, Optional): Line number where the issue was found
-- `severity` (String): Finding severity - "low", "medium" (default), "high", "critical"
-- `category` (String): Issue category (e.g., "security", "performance", "bug", "style")
-- `title` (String): Short title/summary of the finding
-- `description` (String): Detailed description of the issue
-- `suggestion` (String?, Optional): Recommended fix or improvement
-- `codeSnippet` (String?, Optional): The problematic code excerpt
-- `aiResponse` (String?, Optional): Full AI response for this finding
-- `status` (String): Finding status - "open" (default), "acknowledged", "resolved", "ignored"
-- `createdAt` (DateTime): Record creation timestamp
-- `updatedAt` (DateTime): Last update timestamp
-
-**Relationships:**
-- Many-to-one with `ReviewSession` (cascade delete - deletes all findings if session is deleted)
-
-**Indexes:**
-- `sessionId` (for efficient session-based queries)
-- `severity` (for filtering by severity)
-- `category` (for filtering by issue type)
-- `status` (for filtering by resolution status)
-- `filePath` (for finding all issues in a specific file)
-
-## Setup Instructions
-
-### Prerequisites
-
-- Node.js (v18 or higher)
-- npm or yarn
-
-### Installation
-
-1. Install dependencies:
 ```bash
 npm install
+# or
+yarn install
+# or
+pnpm install
 ```
 
-2. Set up environment variables:
-```bash
-# The .env file should already contain:
-DATABASE_URL="file:./dev.db"
-```
+### 3. Set up environment variables
 
-3. Run migrations to create the database:
-```bash
-npm run prisma:migrate
-# or directly:
-npx prisma migrate dev
-```
-
-4. Seed the database with sample data:
-```bash
-npm run prisma:seed
-```
-
-### Available Scripts
-
-- `npm run prisma:migrate` - Run database migrations
-- `npm run prisma:seed` - Seed the database with sample data
-- `npm run prisma:studio` - Open Prisma Studio to view/edit data
-- `npm run example` - Run usage examples demonstrating the schema
-
-### Quick Start Example
-
-See `examples/usage.ts` for a comprehensive example of how to use the Prisma schema. Run it with:
+Copy the example environment file and update it with your configuration:
 
 ```bash
-npm run example
+cp .env.example .env
 ```
 
-This demonstrates:
-- Creating repositories, rules, and prompts
-- Starting a review session
-- Recording findings
-- Querying data with relationships
-- Aggregating statistics
+Edit `.env` and configure:
 
-## Seed Data
+- `DATABASE_URL`: SQLite database file location (default: `file:./dev.db`)
+- `OPENAI_API_KEY`: Your OpenAI API key for AI-powered code reviews
 
-The seed script (`prisma/seed.ts`) populates the database with:
+### 4. Set up the database
 
-### Sample Repositories
-- **main-project**: Active repository with credentials
-- **legacy-app**: Inactive repository for security audits
-
-### Sample Review Rules
-- **sql-injection-check**: Critical security rule for SQL injection detection
-- **inefficient-loop-check**: Medium severity performance rule
-- **naming-convention**: Low severity style rule
-
-### Sample System Prompts
-- **general-code-review**: Comprehensive code review prompt
-- **security-focused-review**: Security audit focused prompt
-- **performance-optimization**: Performance analysis prompt
-
-### Sample Review Session
-A completed review session with:
-- 3 findings (1 critical SQL injection, 1 high severity hardcoded credentials, 1 medium N+1 query issue)
-- Associated with main-project repository
-- Uses security-focused review prompt
-
-## Database Relationships and Cascade Behavior
-
-### Cascade Delete
-- When a `SvnRepository` is deleted → all associated `ReviewSession` records are deleted
-- When a `ReviewSession` is deleted → all associated `ReviewFinding` records are deleted
-
-### Set Null
-- When a `ReviewRule` is deleted → associated `ReviewSession.ruleId` is set to null
-- When a `SystemPrompt` is deleted → associated `ReviewSession.promptId` is set to null
-
-This design ensures data integrity while allowing independent management of rules and prompts.
-
-## Development
-
-### Regenerate Prisma Client
-
-After modifying the schema, regenerate the client:
+Generate the Prisma client:
 
 ```bash
 npx prisma generate
 ```
 
-### Create a New Migration
+Create the database and run migrations:
 
 ```bash
-npx prisma migrate dev --name migration_name
+npx prisma db push
 ```
 
-### View Database with Prisma Studio
+### 5. Run the development server
 
 ```bash
-npm run prisma:studio
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
 ```
 
-Opens a web interface at `http://localhost:5555` to browse and edit data.
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the application.
 
-## Production Considerations
+## Available Scripts
 
-1. **Security**:
-   - Encrypt SVN credentials before storing in `SvnRepository.password`
-   - Use environment variables for sensitive configuration
-   - Implement proper authentication/authorization
+- `npm run dev` - Start the development server
+- `npm run build` - Build the application for production
+- `npm start` - Start the production server
+- `npm run lint` - Run ESLint for code linting
+- `npm test` - Run tests
+- `npm run test:watch` - Run tests in watch mode
+- `npx prisma studio` - Open Prisma Studio to view and edit your database
+- `npx prisma generate` - Generate Prisma Client
+- `npx prisma migrate dev` - Create and apply database migrations
 
-2. **Performance**:
-   - The schema includes indexes on commonly queried fields
-   - Consider adding composite indexes for complex queries
-   - Monitor query performance and add indexes as needed
+## Project Structure
 
-3. **Database**:
-   - For production, consider migrating from SQLite to PostgreSQL or MySQL
-   - Update `schema.prisma` datasource provider accordingly
-   - Adjust the `DATABASE_URL` environment variable
+```
+.
+├── src/
+│   ├── app/                    # Next.js App Router pages
+│   │   ├── config/             # Configuration pages
+│   │   │   ├── repositories/   # Repository configuration
+│   │   │   ├── rules/          # Review rules configuration
+│   │   │   ├── prompts/        # System prompts configuration
+│   │   │   └── history/        # Review history
+│   │   ├── repositories/       # Repository management pages
+│   │   ├── reviews/            # Code review pages
+│   │   ├── settings/           # Settings pages
+│   │   ├── layout.tsx          # Root layout with navigation
+│   │   ├── page.tsx            # Homepage
+│   │   └── globals.css         # Global styles
+│   ├── actions/                # Server actions
+│   │   ├── repositories.ts     # Repository CRUD operations
+│   │   ├── rules.ts            # Review rules operations
+│   │   ├── prompts.ts          # System prompts operations
+│   │   └── reviews.ts          # Review history operations
+│   ├── components/             # React components
+│   │   ├── repositories/       # Repository components
+│   │   ├── rules/              # Review rules components
+│   │   ├── prompts/            # System prompts components
+│   │   ├── reviews/            # Review history components
+│   │   ├── ui/                 # shadcn UI components
+│   │   └── header.tsx          # Navigation header
+│   └── lib/                    # Utility functions and configurations
+│       ├── utils.ts            # Helper utilities
+│       └── prisma.ts           # Prisma client instance
+├── prisma/
+│   ├── schema.prisma           # Database schema
+│   └── migrations/             # Database migrations
+├── __tests__/                  # Test files
+│   └── actions/                # Server action tests
+├── public/                     # Static assets
+├── .env                        # Environment variables (not in git)
+├── .env.example                # Example environment variables
+└── package.json                # Project dependencies
+```
 
-4. **Migrations**:
-   - Test migrations thoroughly in staging before production
-   - Backup database before running migrations
-   - Use `prisma migrate deploy` for production deployments
+## Features
+
+### Current
+
+- ✅ Next.js 16 with App Router and TypeScript
+- ✅ shadcn UI components with Tailwind CSS
+- ✅ Prisma ORM with SQLite database
+- ✅ Global navigation with header
+- ✅ **Configuration UI**
+  - ✅ SVN Repository Management (CRUD with secure password storage)
+  - ✅ Review Rules Configuration (create, edit, enable/disable)
+  - ✅ System Prompts Management (versioning, active prompt selection)
+  - ✅ Review History Viewer (view past reviews and findings)
+- ✅ Form validation with Zod and React Hook Form
+- ✅ Toast notifications for user feedback
+- ✅ Optimistic UI updates
+- ✅ Server actions for data operations
+- ✅ Unit tests for server actions
+- ✅ Environment variable configuration
+
+### Planned
+
+- 🔄 SVN repository integration
+- 🔄 Commit browsing and selection
+- 🔄 AI-powered code review generation
+- 🔄 User authentication
+- 🔄 Role-based access control
+
+## Database Schema
+
+The database schema includes:
+
+- **SvnRepository**: SVN repository configurations with authentication (passwords hashed with bcrypt)
+- **ReviewRule**: Code review rules with type, severity, and configuration
+- **SystemPrompt**: AI prompts for code review (versioned, with active flag)
+- **ReviewSession**: Historical review sessions with metadata
+- **ReviewFinding**: Individual findings from review sessions
+
+To view the current schema:
+
+```bash
+cat prisma/schema.prisma
+```
+
+To open Prisma Studio to view/edit data:
+
+```bash
+npx prisma studio
+```
+
+## Using the Configuration UI
+
+### Managing SVN Repositories
+
+1. Navigate to **Configuration → SVN Repositories**
+2. Click **Add Repository** to create a new repository configuration
+3. Fill in the required fields:
+   - **Name**: A unique identifier for the repository
+   - **URL**: The SVN repository URL
+   - **Username**: (Optional) SVN username
+   - **Password**: (Optional) SVN password - will be hashed and stored securely
+   - **Description**: (Optional) Description of the repository
+   - **Active**: Toggle to enable/disable the repository
+4. Click **Create** to save
+
+**Note**: Passwords are hashed using bcrypt before storage and never displayed in plain text.
+
+### Configuring Review Rules
+
+1. Navigate to **Configuration → Review Rules**
+2. Click **Add Rule** to create a new review rule
+3. Configure the rule:
+   - **Name**: Unique name for the rule
+   - **Description**: What the rule checks for
+   - **Rule Type**: Category (e.g., security, performance, style)
+   - **Severity**: Low, Medium, High, or Critical
+   - **Configuration**: (Optional) JSON configuration for rule-specific settings
+   - **Enabled**: Toggle to enable/disable the rule
+4. Click **Create** to save
+
+Rules can be enabled/disabled using the toggle switches in the list view.
+
+### Managing System Prompts
+
+1. Navigate to **Configuration → System Prompts**
+2. Click **Add Prompt** to create a new system prompt
+3. Configure the prompt:
+   - **Name**: Unique identifier for the prompt
+   - **Description**: Purpose of the prompt
+   - **Category**: Classification (e.g., general, security, performance)
+   - **Prompt Text**: The actual prompt text to send to the AI
+   - **Set as Active**: Only one prompt can be active at a time
+4. Click **Create** to save
+
+**Note**: The version number auto-increments when prompt text changes. Only one prompt can be active at a time.
+
+### Viewing Review History
+
+1. Navigate to **Configuration → Review History**
+2. View all past review sessions with:
+   - Date and time
+   - Repository name
+   - SVN revision
+   - Status (pending, in-progress, completed, failed)
+   - Number of files reviewed
+   - Number of findings
+   - Duration
+3. Click the expand button (chevron) to see detailed session information including:
+   - Session ID
+   - AI model used
+   - Associated rule and prompt
+   - Additional metadata
+
+## Development
+
+### Adding shadcn UI Components
+
+To add more shadcn UI components:
+
+```bash
+npx shadcn@latest add <component-name>
+```
+
+For example:
+```bash
+npx shadcn@latest add table
+npx shadcn@latest add dialog
+npx shadcn@latest add form
+```
+
+### Database Migrations
+
+When you modify the Prisma schema:
+
+1. Update `prisma/schema.prisma`
+2. Run `npx prisma db push` to apply changes
+3. Run `npx prisma generate` to update the Prisma Client
+
+For production environments, use proper migrations:
+
+```bash
+npx prisma migrate dev --name describe_your_changes
+```
+
+## Environment Variables
+
+| Variable | Description | Required | Default |
+|----------|-------------|----------|---------|
+| `DATABASE_URL` | SQLite database file path | Yes | `file:./dev.db` |
+| `OPENAI_API_KEY` | OpenAI API key for AI features | Yes (for AI features) | - |
+| `NODE_ENV` | Environment (development/production) | No | `development` |
+
+## Contributing
+
+This is a bootstrapped project ready for feature development. Key areas for contribution:
+
+1. SVN integration and repository management
+2. Code review generation with OpenAI
+3. User authentication and authorization
+4. Advanced UI components and features
+5. Testing and documentation
 
 ## License
 
-ISC
+[Add your license here]
+
+## Support
+
+For questions and support, please [open an issue](link-to-issues) or contact the development team.
