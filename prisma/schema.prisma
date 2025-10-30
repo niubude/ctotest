@@ -1,0 +1,63 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model ReviewRule {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  rule        String   @db.Text
+  enabled     Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("review_rules")
+}
+
+model SystemPrompt {
+  id        String   @id @default(uuid())
+  name      String
+  prompt    String   @db.Text
+  isActive  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("system_prompts")
+}
+
+model ReviewSession {
+  id              String          @id @default(uuid())
+  commitIds       String[]
+  aiProvider      String
+  aiModel         String
+  status          String          @default("pending")
+  startedAt       DateTime        @default(now())
+  completedAt     DateTime?
+  error           String?         @db.Text
+  reviewFindings  ReviewFinding[]
+
+  @@map("review_sessions")
+}
+
+model ReviewFinding {
+  id              String        @id @default(uuid())
+  reviewSessionId String
+  reviewSession   ReviewSession @relation(fields: [reviewSessionId], references: [id], onDelete: Cascade)
+  commitId        String
+  severity        String
+  category        String
+  title           String
+  description     String        @db.Text
+  filePath        String?
+  lineNumber      Int?
+  suggestion      String?       @db.Text
+  createdAt       DateTime      @default(now())
+
+  @@index([reviewSessionId])
+  @@map("review_findings")
+}
