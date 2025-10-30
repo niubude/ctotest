@@ -10,10 +10,111 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// Placeholder model - will be expanded as features are developed
-model Example {
-  id        String   @id @default(cuid())
-  name      String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+/// Represents an SVN repository configuration
+/// Stores connection details and authentication for SVN repositories to be reviewed
+model SvnRepository {
+  id            String          @id @default(cuid())
+  name          String          @unique
+  url           String
+  username      String?
+  password      String?
+  description   String?
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
+  reviewSessions ReviewSession[]
+
+  @@index([name])
+  @@index([isActive])
+}
+
+/// Defines review rules and criteria for code review
+/// Rules can be customized per repository or applied globally
+model ReviewRule {
+  id                String          @id @default(cuid())
+  name              String          @unique
+  description       String?
+  ruleType          String          // e.g., "security", "performance", "style", "best-practice"
+  severity          String          @default("medium") // "low", "medium", "high", "critical"
+  isEnabled         Boolean         @default(true)
+  configuration     String?         // JSON string for rule-specific config
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  reviewSessions    ReviewSession[]
+
+  @@index([name])
+  @@index([ruleType])
+  @@index([isEnabled])
+}
+
+/// System prompts for AI-powered code review
+/// Contains templates and instructions for the AI reviewer
+model SystemPrompt {
+  id              String          @id @default(cuid())
+  name            String          @unique
+  promptText      String          // The actual prompt template
+  description     String?
+  category        String          @default("general") // e.g., "general", "security", "performance"
+  isActive        Boolean         @default(true)
+  version         Int             @default(1)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  reviewSessions  ReviewSession[]
+
+  @@index([name])
+  @@index([category])
+  @@index([isActive])
+}
+
+/// Represents a code review session
+/// Captures a single review run for a repository with specific rules and prompts
+model ReviewSession {
+  id              String           @id @default(cuid())
+  repositoryId    String
+  repository      SvnRepository    @relation(fields: [repositoryId], references: [id], onDelete: Cascade)
+  ruleId          String?
+  rule            ReviewRule?      @relation(fields: [ruleId], references: [id], onDelete: SetNull)
+  promptId        String?
+  prompt          SystemPrompt?    @relation(fields: [promptId], references: [id], onDelete: SetNull)
+  svnRevision     String?          // SVN revision number reviewed
+  status          String           @default("pending") // "pending", "in-progress", "completed", "failed"
+  startedAt       DateTime         @default(now())
+  completedAt     DateTime?
+  aiModel         String?          // e.g., "gpt-4", "claude-3"
+  totalFiles      Int              @default(0)
+  totalFindings   Int              @default(0)
+  metadata        String?          // JSON string for additional session data
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  findings        ReviewFinding[]
+
+  @@index([repositoryId])
+  @@index([status])
+  @@index([startedAt])
+}
+
+/// Individual findings from a review session
+/// Stores specific issues, suggestions, or observations from the AI review
+model ReviewFinding {
+  id              String         @id @default(cuid())
+  sessionId       String
+  session         ReviewSession  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  filePath        String
+  lineNumber      Int?
+  severity        String         @default("medium") // "low", "medium", "high", "critical"
+  category        String         // e.g., "security", "performance", "bug", "style"
+  title           String
+  description     String
+  suggestion      String?        // Recommended fix or improvement
+  codeSnippet     String?        // The problematic code
+  aiResponse      String?        // Full AI response for this finding
+  status          String         @default("open") // "open", "acknowledged", "resolved", "ignored"
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  @@index([sessionId])
+  @@index([severity])
+  @@index([category])
+  @@index([status])
+  @@index([filePath])
 }
