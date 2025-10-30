@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.env
+.env.local
+.env.*.local
+*.log
+coverage
+.DS_Store
+.vscode
+.idea
+*.swp
+*.swo
+.cache
+README.md
+CONTRIBUTING.md
+API.md
