@@ -1,6 +1,12 @@
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 export function Header() {
   return (
@@ -24,6 +30,25 @@ export function Header() {
           >
             Reviews
           </Link>
+          <DropdownMenu>
+            <DropdownMenuTrigger className="transition-colors hover:text-foreground/80">
+              Configuration
+            </DropdownMenuTrigger>
+            <DropdownMenuContent>
+              <DropdownMenuItem asChild>
+                <Link href="/config/repositories">SVN Repositories</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/config/rules">Review Rules</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/config/prompts">System Prompts</Link>
+              </DropdownMenuItem>
+              <DropdownMenuItem asChild>
+                <Link href="/config/history">Review History</Link>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           <Link
             href="/settings"
             className="transition-colors hover:text-foreground/80"

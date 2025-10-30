@@ -80,9 +80,11 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - `npm run build` - Build the application for production
 - `npm start` - Start the production server
 - `npm run lint` - Run ESLint for code linting
+- `npm test` - Run tests
+- `npm run test:watch` - Run tests in watch mode
 - `npx prisma studio` - Open Prisma Studio to view and edit your database
 - `npx prisma generate` - Generate Prisma Client
-- `npx prisma db push` - Push schema changes to the database
+- `npx prisma migrate dev` - Create and apply database migrations
 
 ## Project Structure
 
@@ -90,20 +92,37 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 .
 ├── src/
 │   ├── app/                    # Next.js App Router pages
+│   │   ├── config/             # Configuration pages
+│   │   │   ├── repositories/   # Repository configuration
+│   │   │   ├── rules/          # Review rules configuration
+│   │   │   ├── prompts/        # System prompts configuration
+│   │   │   └── history/        # Review history
 │   │   ├── repositories/       # Repository management pages
 │   │   ├── reviews/            # Code review pages
 │   │   ├── settings/           # Settings pages
 │   │   ├── layout.tsx          # Root layout with navigation
 │   │   ├── page.tsx            # Homepage
 │   │   └── globals.css         # Global styles
+│   ├── actions/                # Server actions
+│   │   ├── repositories.ts     # Repository CRUD operations
+│   │   ├── rules.ts            # Review rules operations
+│   │   ├── prompts.ts          # System prompts operations
+│   │   └── reviews.ts          # Review history operations
 │   ├── components/             # React components
+│   │   ├── repositories/       # Repository components
+│   │   ├── rules/              # Review rules components
+│   │   ├── prompts/            # System prompts components
+│   │   ├── reviews/            # Review history components
 │   │   ├── ui/                 # shadcn UI components
 │   │   └── header.tsx          # Navigation header
 │   └── lib/                    # Utility functions and configurations
 │       ├── utils.ts            # Helper utilities
 │       └── prisma.ts           # Prisma client instance
 ├── prisma/
-│   └── schema.prisma           # Database schema
+│   ├── schema.prisma           # Database schema
+│   └── migrations/             # Database migrations
+├── __tests__/                  # Test files
+│   └── actions/                # Server action tests
 ├── public/                     # Static assets
 ├── .env                        # Environment variables (not in git)
 ├── .env.example                # Example environment variables
@@ -112,13 +131,22 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Features
 
-### Current (Bootstrap Phase)
+### Current
 
 - ✅ Next.js 16 with App Router and TypeScript
 - ✅ shadcn UI components with Tailwind CSS
 - ✅ Prisma ORM with SQLite database
 - ✅ Global navigation with header
-- ✅ Placeholder pages for repositories, reviews, and settings
+- ✅ **Configuration UI**
+  - ✅ SVN Repository Management (CRUD with secure password storage)
+  - ✅ Review Rules Configuration (create, edit, enable/disable)
+  - ✅ System Prompts Management (versioning, active prompt selection)
+  - ✅ Review History Viewer (view past reviews and findings)
+- ✅ Form validation with Zod and React Hook Form
+- ✅ Toast notifications for user feedback
+- ✅ Optimistic UI updates
+- ✅ Server actions for data operations
+- ✅ Unit tests for server actions
 - ✅ Environment variable configuration
 
 ### Planned
@@ -126,25 +154,93 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 - 🔄 SVN repository integration
 - 🔄 Commit browsing and selection
 - 🔄 AI-powered code review generation
-- 🔄 Review history and management
 - 🔄 User authentication
-- 🔄 Multi-repository support
+- 🔄 Role-based access control
 
 ## Database Schema
 
-The initial database schema includes a placeholder `Example` model. This will be expanded as features are developed to include:
+The database schema includes:
 
-- Repositories
-- Commits
-- Reviews
-- Users
-- Settings
+- **SvnRepository**: SVN repository configurations with authentication (passwords hashed with bcrypt)
+- **ReviewRule**: Code review rules with type, severity, and configuration
+- **SystemPrompt**: AI prompts for code review (versioned, with active flag)
+- **ReviewSession**: Historical review sessions with metadata
+- **ReviewFinding**: Individual findings from review sessions
 
 To view the current schema:
 
 ```bash
 cat prisma/schema.prisma
 ```
+
+To open Prisma Studio to view/edit data:
+
+```bash
+npx prisma studio
+```
+
+## Using the Configuration UI
+
+### Managing SVN Repositories
+
+1. Navigate to **Configuration → SVN Repositories**
+2. Click **Add Repository** to create a new repository configuration
+3. Fill in the required fields:
+   - **Name**: A unique identifier for the repository
+   - **URL**: The SVN repository URL
+   - **Username**: (Optional) SVN username
+   - **Password**: (Optional) SVN password - will be hashed and stored securely
+   - **Description**: (Optional) Description of the repository
+   - **Active**: Toggle to enable/disable the repository
+4. Click **Create** to save
+
+**Note**: Passwords are hashed using bcrypt before storage and never displayed in plain text.
+
+### Configuring Review Rules
+
+1. Navigate to **Configuration → Review Rules**
+2. Click **Add Rule** to create a new review rule
+3. Configure the rule:
+   - **Name**: Unique name for the rule
+   - **Description**: What the rule checks for
+   - **Rule Type**: Category (e.g., security, performance, style)
+   - **Severity**: Low, Medium, High, or Critical
+   - **Configuration**: (Optional) JSON configuration for rule-specific settings
+   - **Enabled**: Toggle to enable/disable the rule
+4. Click **Create** to save
+
+Rules can be enabled/disabled using the toggle switches in the list view.
+
+### Managing System Prompts
+
+1. Navigate to **Configuration → System Prompts**
+2. Click **Add Prompt** to create a new system prompt
+3. Configure the prompt:
+   - **Name**: Unique identifier for the prompt
+   - **Description**: Purpose of the prompt
+   - **Category**: Classification (e.g., general, security, performance)
+   - **Prompt Text**: The actual prompt text to send to the AI
+   - **Set as Active**: Only one prompt can be active at a time
+4. Click **Create** to save
+
+**Note**: The version number auto-increments when prompt text changes. Only one prompt can be active at a time.
+
+### Viewing Review History
+
+1. Navigate to **Configuration → Review History**
+2. View all past review sessions with:
+   - Date and time
+   - Repository name
+   - SVN revision
+   - Status (pending, in-progress, completed, failed)
+   - Number of files reviewed
+   - Number of findings
+   - Duration
+3. Click the expand button (chevron) to see detailed session information including:
+   - Session ID
+   - AI model used
+   - Associated rule and prompt
+   - Additional metadata
 
 ## Development
 
